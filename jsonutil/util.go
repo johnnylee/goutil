@@ -10,10 +10,7 @@ import (
 // Load into v the json file at the give path. The path elements, `pathElem`
 // are expanded by `fileutil.ExpandPath`.
 func Load(v interface{}, pathElem ...string) error {
-	path, err := fileutil.ExpandPath(pathElem...)
-	if err != nil {
-		return err
-	}
+	path := fileutil.ExpandPath(pathElem...)
 
 	buf, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -26,10 +23,7 @@ func Load(v interface{}, pathElem ...string) error {
 // Store the data in v into a give file path. The path elements `pathElem` are
 // expanded by `fileutil.ExpandPath`.
 func Store(v interface{}, pathElem ...string) error {
-	path, err := fileutil.ExpandPath(pathElem...)
-	if err != nil {
-		return err
-	}
+	path := fileutil.ExpandPath(pathElem...)
 
 	buf, err := json.Marshal(v)
 	if err != nil {
