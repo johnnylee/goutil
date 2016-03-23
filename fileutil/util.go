@@ -49,3 +49,10 @@ func IsDir(elem ...string) bool {
 	info, err := os.Stat(path)
 	return err == nil && info.IsDir()
 }
+
+// Make all directories in the path. The path permissions are set to 0700 on
+// components.
+func MkdirAll(elem ...string) error {
+	path := ExpandPath(elem...)
+	return os.MkdirAll(path, 0700)
+}
