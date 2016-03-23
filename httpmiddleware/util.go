@@ -1,21 +1,21 @@
 package httpmiddleware
 
-
 import (
 	"compress/gzip"
-	"github.com/johnnylee/goutil/logutil"
 	"io"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/johnnylee/goutil/logutil"
 )
 
 // We log HTTP requests using the httpLogger.
 var httpLogger = logutil.New("http")
 
 // This is a wrapper for the standard http handler that adds request logging,
-// including timing. 
+// including timing.
 func Log(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tStart := time.Now().UnixNano()
