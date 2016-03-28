@@ -39,10 +39,10 @@ func ConnectBuf(a, b interface{}, size int) {
 	}
 
 	aVal.Set(reflect.MakeChan(aType, size))
-	//aVal.Set(chanVal)
 	bVal.Set(aVal)
 }
 
+// Call `Run` on each Process. The last process is run in the foreground.
 func Run(procs ...Process) {
 	for i := 0; i < len(procs)-1; i++ {
 		go procs[i].Run()
