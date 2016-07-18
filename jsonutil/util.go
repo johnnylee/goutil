@@ -3,8 +3,9 @@ package jsonutil
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/johnnylee/goutil/fileutil"
 	"io/ioutil"
+
+	"github.com/johnnylee/goutil/fileutil"
 )
 
 // Load into v the json file at the give path. The path elements, `pathElem`

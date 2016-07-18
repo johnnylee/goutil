@@ -2,11 +2,12 @@ package logutil
 
 import (
 	"fmt"
-	"github.com/johnnylee/goutil/fileutil"
-	"gopkg.in/natefinch/lumberjack.v2"
 	"log"
 	"os"
 	"path/filepath"
+
+	"github.com/johnnylee/goutil/fileutil"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 func SetFilePath(pathElem ...string) (err error) {
