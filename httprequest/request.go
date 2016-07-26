@@ -30,17 +30,6 @@ func New(w http.ResponseWriter, r *http.Request) Request {
 	return Request{w, r}
 }
 
-// Incoming form should have a CSRFToken value. Return false if the tokens
-// don't match.
-func (req Request) CheckCSRFToken(expected string) bool {
-	token := req.R.FormValue("CSRFToken")
-	if token == "" || token != expected {
-		log.Err(nil, "CSRF mismatch: %v != %v", token, expected)
-		return false
-	}
-	return true
-}
-
 // Decode the form into the given struct pointer.
 func (req Request) DecodeForm(dest interface{}) error {
 	err := schemaDecoder.Decode(dest, req.R.Form)
