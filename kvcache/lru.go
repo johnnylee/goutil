@@ -49,6 +49,8 @@ func (c *LRUMemCache) Get(key string, update UpdateFunc) (interface{}, error) {
 		return nil, err
 	}
 
+	newSize += len(key)
+
 	// Lock again for writing.
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -111,4 +113,11 @@ func (c *LRUMemCache) Evict(key string) {
 	delete(c.cache, key)
 	c.ll.Remove(el)
 	c.totalBytes -= item.size
+}
+
+func (c *LRUMemCache) Clear() {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	c.cache = make(map[string]*list.Element)
+	c.totalBytes = 0
 }
