@@ -34,18 +34,18 @@ type Logger struct {
 
 func New(prefix string) Logger {
 	log.SetFlags(log.Ldate | log.Ltime)
-	return Logger{fmt.Sprintf("[%v] ", prefix)}
+	return Logger{fmt.Sprintf("[%v]", prefix)}
 }
 
 func (l Logger) Msg(format string, v ...interface{}) {
-	log.Printf(l.prefix+format+"\n", v...)
+	log.Printf(l.prefix+" "+format, v...)
 }
 
 func (l Logger) Err(err error, format string, v ...interface{}) {
 	msg := fmt.Sprintf(format, v...)
 	if err != nil {
-		log.Printf(l.prefix+"ERROR: %v:\n%v\n", msg, err)
+		log.Printf("%v ERROR Msg: %v\n  Err: %v", l.prefix, msg, err)
 	} else {
-		log.Printf(l.prefix+"ERROR: %v\n", msg)
+		log.Printf("%v ERROR Msg: %v", l.prefix, msg)
 	}
 }

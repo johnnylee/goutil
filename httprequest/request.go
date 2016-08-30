@@ -1,6 +1,7 @@
 package httprequest
 
 import (
+	"encoding/json"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -40,10 +41,65 @@ func (req Request) DecodeForm(dest interface{}) error {
 	return err
 }
 
+func (req Request) DecodeFormJSON(dest interface{}) error {
+	decoder := json.NewDecoder(req.R.Body)
+	if err := decoder.Decode(&dest); err != nil {
+		log.Err(err, "When decoding JSON request body")
+		return err
+	}
+	return nil
+}
+
+func (req Request) RespondJSON(obj interface{}) {
+	req.W.Header().Set("Access-Control-Allow-Origin", "*")
+	req.W.Header().Set("Content-Type", "application/json; charset=utf-8")
+	req.W.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	req.W.Header().Set("Pragma", "no-cache")
+	req.W.Header().Set("Expires", "0")
+	encoded, err := json.Marshal(obj)
+	if err != nil {
+		log.Err(err, "When encoding request response")
+		encoded = []byte("An unknown error occured.")
+	}
+
+	_, _ = req.W.Write(encoded)
+}
+
+// Save a single file by key.
+func (req Request) SaveFormFileToTmp(key string) (string, string, error) {
+	// Create a temporary directory.
+	tempDir, err := ioutil.TempDir("", "upload-")
+	if err != nil {
+		log.Err(err, "When creating a temporary directory")
+		return "", "", err
+	}
+
+	src, header, err := req.R.FormFile(key)
+	if err != nil {
+		log.Err(err, "When getting form file")
+		return tempDir, "", err
+	}
+
+	path := filepath.Join(tempDir, header.Filename)
+	dst, err := os.Create(path)
+	defer dst.Close()
+
+	if err != nil {
+		log.Err(err, "When creating output file: %v", path)
+	}
+
+	// Copy the file.
+	if _, err = io.Copy(dst, src); err != nil {
+		log.Err(err, "When copying to a temporary file")
+	}
+
+	return tempDir, path, err
+}
+
 // Save posted file to a temporary directory and file, returning the directory,
 // to full path to each file, and an error.
 func (req Request) SaveFormFilesToTmp() (string, []string, error) {
-	// Check for no files. 
+	// Check for no files.
 	if req.R.MultipartForm == nil || req.R.MultipartForm.File == nil {
 		log.Err(nil, "Form doesn't have any files")
 		return "", nil, nil
@@ -94,7 +150,7 @@ func (req Request) SaveFormFilesToTmp() (string, []string, error) {
 	return tempDir, paths, nil
 }
 
-// Delete the temporary directory created by the `SaveFormFileToTmp` function.
+// Delete the temporary directory created by the `SaveFormFilesToTmp` function.
 func (req Request) CleanUpTmpDir(tmpDir string) {
 	if len(tmpDir) == 0 {
 		return
