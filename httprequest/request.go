@@ -33,6 +33,19 @@ func New(w http.ResponseWriter, r *http.Request) Request {
 
 // Decode the form into the given struct pointer.
 func (req Request) DecodeForm(dest interface{}) error {
+
+	if req.R.Header.Get("Content-Type") == "multipart/form-data" {
+		if err := req.R.ParseMultipartForm(10485760); err != nil {
+			log.Err(err, "When parsing multipart form")
+			return err
+		}
+	} else {
+		if err := req.R.ParseForm(); err != nil {
+			log.Err(err, "When parsing form")
+			return err
+		}
+	}
+
 	err := schemaDecoder.Decode(dest, req.R.Form)
 	if err != nil {
 		log.Err(err, "When decoding form")
@@ -99,6 +112,11 @@ func (req Request) SaveFormFileToTmp(key string) (string, string, error) {
 // Save posted file to a temporary directory and file, returning the directory,
 // to full path to each file, and an error.
 func (req Request) SaveFormFilesToTmp() (string, []string, error) {
+	if err := req.R.ParseMultipartForm(1048576); err != nil {
+		log.Err(err, "When parsing multipart form")
+		return "", nil, err
+	}
+
 	// Check for no files.
 	if req.R.MultipartForm == nil || req.R.MultipartForm.File == nil {
 		log.Err(nil, "Form doesn't have any files")
@@ -159,4 +177,8 @@ func (req Request) CleanUpTmpDir(tmpDir string) {
 	if err := os.RemoveAll(tmpDir); err != nil {
 		log.Err(err, "When removing a temporary directory %v", tmpDir)
 	}
+}
+
+func (req Request) Redirect302(URL string) {
+	http.Redirect(req.W, req.R, URL, http.StatusFound)
 }
