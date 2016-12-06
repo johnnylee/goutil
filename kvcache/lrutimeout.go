@@ -29,7 +29,7 @@ func (c *LRUTimeoutMemCache) Get(
 		if err != nil {
 			return nil, 0, err
 		}
-		return timeoutWrapper{now + c.maxAge, value}, size, nil
+		return timeoutWrapper{now + c.maxAge, value}, size + 8, nil
 	})
 
 	if err != nil {
