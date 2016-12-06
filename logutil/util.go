@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 
 	"github.com/johnnylee/goutil/fileutil"
-	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 func SetFilePath(pathElem ...string) (err error) {
@@ -19,11 +18,14 @@ func SetFilePath(pathElem ...string) (err error) {
 		return err
 	}
 
+	// Open the log file.
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		return err
+	}
+
 	// Set the output.
-	log.SetOutput(&lumberjack.Logger{
-		Filename: path,
-		MaxSize:  100,
-	})
+	log.SetOutput(f)
 
 	return nil
 }
