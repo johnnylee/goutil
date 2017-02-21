@@ -54,8 +54,16 @@ func DecodeForm(
 		return nil
 	}
 
-	if err := r.ParseMultipartForm(MaxMemory); err != nil {
-		return err
+	if r.Header.Get("Content-Type") == "multipart/form-data" {
+		if err := r.ParseMultipartForm(MaxMemory); err != nil {
+			log.Err(err, "When parsing multipart form")
+			return err
+		}
+	} else {
+		if err := r.ParseForm(); err != nil {
+			log.Err(err, "When parsing form")
+			return err
+		}
 	}
 
 	// Read data from URL.
