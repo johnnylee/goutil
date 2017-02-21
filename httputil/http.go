@@ -1,18 +1,95 @@
 package httputil
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 
+	"github.com/gorilla/schema"
 	"github.com/johnnylee/goutil/logutil"
+	"github.com/julienschmidt/httprouter"
 )
 
 var log = logutil.New("httputil")
 
-var MaxMemory int64 = 1048576
+var MaxMemory int64 = 4194304
+
+var schemaDecoder *schema.Decoder
+var tokenHandler TokenHandler
+
+func init() {
+	schemaDecoder = schema.NewDecoder()
+	schemaDecoder.IgnoreUnknownKeys(true)
+	SetSessionKeys(randBytes(32), randBytes(32))
+}
+
+// Override the default schema decoder.
+func SetSchemaDecoder(decoder *schema.Decoder) {
+	schemaDecoder = decoder
+}
+
+// Both keys should be 32 bytes.
+func SetSessionKeys(signingKey, cryptKey []byte) {
+	var err error
+	tokenHandler, err = NewTokenHandler(signingKey, cryptKey)
+	if err != nil {
+		panic(err)
+	}
+}
+
+/*************
+ * Arguments *
+ *************/
+
+// Decode form arguments. Arguments are first pulled from the URL (httprouter),
+// then from the form.
+func DecodeForm(
+	r *http.Request, ps httprouter.Params, args interface{},
+) error {
+	if args == nil {
+		return nil
+	}
+
+	if err := r.ParseMultipartForm(MaxMemory); err != nil {
+		return err
+	}
+
+	// Read data from URL.
+	data := map[string][]string{}
+	for _, p := range ps {
+		data[p.Key] = []string{p.Value}
+	}
+
+	if err := schemaDecoder.Decode(args, data); err != nil {
+		log.Err(err, "When decoding URL arguments")
+		return err
+	}
+
+	// Read args from form.
+	if err := schemaDecoder.Decode(args, r.Form); err != nil {
+		log.Err(err, "When decoding form")
+		return err
+	}
+
+	return nil
+}
+
+func DecodeJSON(r *http.Request, args interface{}) error {
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&args); err != nil {
+		log.Err(err, "When decoding JSON request body")
+		return err
+	}
+	return nil
+}
+
+/***************
+ * File Upload *
+ ***************/
 
 func SaveFormFileToTmp(r *http.Request, key string) (string, string, error) {
 	// Parse the form.
@@ -114,4 +191,73 @@ func CleanUpTmpDir(tmpDir string) {
 	if err := os.RemoveAll(tmpDir); err != nil {
 		log.Err(err, "When removing temporary directory %v", tmpDir)
 	}
+}
+
+/************
+ * Sessions *
+ ************/
+
+func StoreSession(
+	w http.ResponseWriter, key string, maxAge int, session interface{},
+) error {
+	value, err := tokenHandler.Encode(session)
+	if err != nil {
+		log.Err(err, "When encoding session cookie")
+		return err
+	}
+
+	cookie := http.Cookie{
+		Name:     key,
+		Value:    string(value),
+		Path:     "/",
+		HttpOnly: true,
+		MaxAge:   maxAge,
+	}
+
+	http.SetCookie(w, &cookie)
+	return nil
+}
+
+func LoadSession(r *http.Request, key string, session interface{}) error {
+	cookie, err := r.Cookie(key)
+	if err != nil {
+		if err != http.ErrNoCookie {
+			log.Err(err, "When reading cookie: %v", key)
+		}
+		return err
+	}
+
+	err = tokenHandler.Decode([]byte(cookie.Value), session)
+	if err != nil {
+		log.Err(err, "When decoding cookie")
+	}
+
+	return err
+}
+
+/*************
+ * Responses *
+ *************/
+
+// Redirect with 302 status. This isn't the most modern way to do this, but it
+// seems to be more robust in older browsers.
+func Redirect(
+	w http.ResponseWriter, r *http.Request, URL string, args ...interface{},
+) {
+	http.Redirect(w, r, fmt.Sprintf(URL, args...), http.StatusFound)
+}
+
+func RespondJSON(w http.ResponseWriter, obj interface{}) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+	encoded, err := json.Marshal(obj)
+	if err != nil {
+		log.Err(err, "When encoding request response")
+		encoded = []byte("An unknown error occured.")
+	}
+
+	_, _ = w.Write(encoded)
 }
