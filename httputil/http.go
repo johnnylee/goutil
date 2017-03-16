@@ -219,7 +219,10 @@ func StoreSession(
 		Value:    string(value),
 		Path:     "/",
 		HttpOnly: true,
-		MaxAge:   maxAge,
+	}
+
+	if maxAge > 0 {
+		cookie.MaxAge = maxAge
 	}
 
 	http.SetCookie(w, &cookie)
